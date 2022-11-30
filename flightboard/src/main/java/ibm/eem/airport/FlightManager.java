@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
+import java.util.Base64;
 
 import javax.json.Json;
 import javax.json.JsonArray;
@@ -52,9 +53,12 @@ public class FlightManager {
 
     public static String KAFKA_REST_URL_ENV = "KAFKA_REST_URL";
     public static String KAFKA_TOPIC_ENV = "KAFKA_TOPIC";
+    public static String KAFKA_USERNAME_ENV = "KAFKA_USERNAME";
+    public static String KAFKA_PASSWORD_ENV = "KAFKA_PASSWORD";
 
     public static String KAFKA_REST_URL;
     public static String KAFKA_TOPIC;
+    public static String KAFKA_AUTH_HEADER;
 
     private Jsonb jb;
     private static Map<String, Flight> flightsDB = new HashMap<String, Flight>();
@@ -64,6 +68,11 @@ public class FlightManager {
       KAFKA_REST_URL = System.getenv(KAFKA_REST_URL_ENV);
       KAFKA_TOPIC = System.getenv(KAFKA_TOPIC_ENV);
 
+      String kafkaUsername = System.getenv(KAFKA_USERNAME_ENV);
+      String kafkaPassword = System.getenv(KAFKA_PASSWORD_ENV); 
+      String credentials = kafkaUsername + ":" + kafkaPassword;
+      String base64encoded = Base64.getEncoder().encodeToString(credentials.getBytes());
+      KAFKA_AUTH_HEADER = "Basic " + base64encoded;
     }
     static {
       FileHandler handler;
@@ -148,6 +157,7 @@ public class FlightManager {
             Client client = ClientBuilder.newClient();
             WebTarget target = client.target(KAFKA_REST_URL + "/" + KAFKA_TOPIC + "/records");
             Response resp = target.request(MediaType.APPLICATION_JSON)
+                .header("Authorization", KAFKA_AUTH_HEADER)
                 .accept(MediaType.APPLICATION_JSON)
                 .post(Entity.json(f), Response.class);
         } catch (ProcessingException e) {
